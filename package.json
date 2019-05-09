@@ -1,0 +1,14 @@
+{
+  "name": "lost-in-the-stacks",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "reveal-md slides.md -w --theme solarized"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "reveal-md": "^3.0.4"
+  }
+}
