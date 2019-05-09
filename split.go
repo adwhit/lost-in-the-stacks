@@ -15,7 +15,6 @@ import (
 const hugesize = 8192          // 8 KB
 const mediumsize1 = 1024-3*128 // no split required - fast!
 const mediumsize2 = 1024-2*128 // split between medium and small - slow!
-const mediumsize3 = 1024-1*128 // split between huge and medium - fast!
 const smallsize = 128
 
 // big frame, forces start of stack
@@ -65,29 +64,12 @@ func medium2(i int) byte {
 }
 
 
-
-func huge3(i int) byte {
-        var bigarr [hugesize]byte
-        bigarr[i] = medium3(i)
-        return bigarr[2*i]
-}
-func medium3(i int) byte {
-        var medarr [mediumsize3]byte
-        for k := 0; k < 100000000; k++ {
-                medarr[i] = small(i)
-        }
-        return medarr[2*i]
-}
-
 func main() {
         t0 := time.Now()
         huge1(0)
         t1 := time.Now()
         huge2(0)
         t2 := time.Now()
-        huge3(0)
-        t3 := time.Now()
         fmt.Printf("  no split: %v\n", t1.Sub(t0))
         fmt.Printf("with split: %v\n", t2.Sub(t1))
-        fmt.Printf("both split: %v\n", t3.Sub(t2))
 }
