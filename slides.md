@@ -292,7 +292,7 @@ Segmentation fault (core dumped)
 
 ----
 
-* When the stack returns from a function (unwinds), it is possible that a substack will no longer be needed
+* When the program returns from a function and *pops* from the stack, it is possible that a substack will no longer be needed
 * It is *freed* and will be garbage collected
 * This allows the stack to grow indefinitely
 
@@ -300,7 +300,14 @@ Segmentation fault (core dumped)
 
 ---
 
-## Consequences
+### Consequence: The *hot-split* problem
+
+* In certain cases, when a function is called repeated on a substack boundary...
+* Repeated allocation and deallocation can cause performance to tank
+* Hard to forsee, hard to understand
+* 'Mysterious' - cause could be a small change deep in the call stack
+
+----
 
 Now we can understand our test-case.
 
@@ -317,18 +324,16 @@ const mediumsize1 = 1024-3*128 // no split required - fast!
 const mediumsize2 = 1024-2*128 // split between medium and small - slow!
 const smallsize = 128
 
-// big frame, forces start of stack
 func huge1(i int) byte {
-	    // allocate a large array
+	    // allocate a large array, forces a new substack
         var bigarr [hugesize]byte
-	    // call medium1. medium1 is allocated in a new split stack
+	    // call medium1. medium1 stack frame is placed in current substack
         bigarr[i] = medium1(i)
         return bigarr[2*i]
 }
 
-// medium frame, uses up most of StackExtra
 func medium1(i int) byte {
-     	// allocate array that takes up most of the rest of the split stack
+     	// allocate array that takes up most of the rest of the substack
         var medarr [mediumsize1]byte
 	    // repeatedly call into small (100M times). small can use existing stack-frame: fast!
         for k := 0; k < 100000000; k++ {
@@ -348,17 +353,21 @@ func small(i int) byte {
 
 // same as above, slightly different medium size
 func huge2(i int) byte {
+	    // allocate a large array, forces a new substack
         var bigarr [hugesize]byte
+	    // call medium1. medium2 stack frame is placed in current substack
         bigarr[i] = medium2(i)
         return bigarr[2*i]
 }
 
 func medium2(i int) byte {
-	    // allocate array that takes up *all* of new split stack
+	    // allocate array that takes up *all* of rest of the substack
         var medarr [mediumsize2]byte
-		// now the call to small causes a new split stack to be allocated: slow!
+		// now the call to `small` causes a new substack to be allocated: slow!
         for k := 0; k < 100000000; k++ {
+                // allocate
                 medarr[i] = small(i)
+                // destroy
         }
         return medarr[2*i]
 }
@@ -389,7 +398,7 @@ That is expensive!
   no split: 919.613062ms
 with split: 4.1413503s
 ```
-* The first and third test cases are designed not to allocate
+* In contrast, the first test case does NOT create a new stack, and is fast
 
 ---
 
@@ -418,3 +427,7 @@ with split: 692.60258ms
 ---
 
 ### Sorry/Thanks!
+
+* Slides: [http://github.com/adwhit/lost-in-the-stacks](http://github.com/adwhit/lost-in-the-stacks)
+* [Blog post I stole most of this info from](https://agis.io/post/contiguous-stacks-golang/)
+* [Go stacks design doc](https://docs.google.com/document/d/1wAaf1rYoM4S4gtnPh0zOlGzWtrZFQ5suE8qr2sD8uWQ/pub)
